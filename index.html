@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Habit Tracker</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+
+<script>
+  // Apply saved theme before first paint to avoid a flash of the wrong theme.
+  (function () {
+    try {
+      var raw = localStorage.getItem('habitTrackerData');
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && parsed.theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      }
+    } catch (e) { /* ignore malformed storage */ }
+  })();
+</script>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <h1 class="brand-title">Habit Tracker<span class="brand-dot">.</span></h1>
+        <p class="brand-tagline">Consistency over perfection.</p>
+      </div>
+
+      <div class="month-nav">
+        <button class="nav-btn" id="prevMonthBtn" data-tooltip="Previous month" aria-label="Previous month">‹</button>
+        <div class="select-wrap">
+          <select id="monthSelect" aria-label="Month"></select>
+        </div>
+        <div class="select-wrap select-wrap-year">
+          <select id="yearSelect" aria-label="Year"></select>
+        </div>
+        <button class="nav-btn" id="nextMonthBtn" data-tooltip="Next month" aria-label="Next month">›</button>
+        <button class="today-btn" id="todayBtn">Today</button>
+      </div>
+
+      <div class="topbar-actions">
+        <div class="saved-status" id="savedStatus">
+          <span class="saved-icon">✓</span>
+          <span class="saved-text">Saved</span>
+        </div>
+        <button class="theme-toggle" id="themeToggle" data-tooltip="Toggle theme" aria-label="Toggle dark mode">
+          <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.5v2.4M12 19.1v2.4M4.2 4.2l1.7 1.7M18.1 18.1l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.2 19.8l1.7-1.7M18.1 5.9l1.7-1.7"></path>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 14.2a8.5 8.5 0 1 1-9.7-11 7 7 0 0 0 9.7 11z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-strip" id="statsStrip">
+      <div class="stat-item">
+        <span class="stat-value" id="statToday">0%</span>
+        <span class="stat-label">Today</span>
+      </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="statMonth">0%</span>
+        <span class="stat-label">This month</span>
+      </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="statStreak">0</span>
+        <span class="stat-label">Day streak</span>
+      </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat-item">
+        <span class="stat-value" id="statTotal">0</span>
+        <span class="stat-label">Completed</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="tracker-card" id="trackerCard">
+    <div class="tracker-scroll">
+      <table class="tracker-table" id="trackerTable">
+        <thead id="trackerHead"></thead>
+        <tbody id="trackerBody"></tbody>
+      </table>
+    </div>
+    <div class="tracker-footer">
+      <button class="add-habit-btn" id="addHabitBtn" data-tooltip="Add a new habit">
+        <span class="plus-icon">+</span> Add habit
+      </button>
+    </div>
+  </main>
+
+  <section class="analytics">
+    <div class="analytics-grid">
+
+      <div class="card donut-card">
+        <h3 class="card-title">Today</h3>
+        <div class="donut-wrap">
+          <svg viewBox="0 0 120 120" class="donut">
+            <circle class="donut-track" cx="60" cy="60" r="52"></circle>
+            <circle class="donut-fill donut-fill-today" id="todayDonutFill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-value" id="todayDonutValue">0%</span>
+          </div>
+        </div>
+        <p class="card-sub" id="todaySub">0 of 0 habits</p>
+      </div>
+
+      <div class="card donut-card">
+        <h3 class="card-title">This month</h3>
+        <div class="donut-wrap">
+          <svg viewBox="0 0 120 120" class="donut">
+            <circle class="donut-track" cx="60" cy="60" r="52"></circle>
+            <circle class="donut-fill donut-fill-month" id="monthDonutFill" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="donut-center">
+            <span class="donut-value" id="monthDonutValue">0%</span>
+          </div>
+        </div>
+        <p class="card-sub" id="monthSub">0 completions</p>
+      </div>
+
+      <div class="card weekly-card">
+        <h3 class="card-title">Weekly progress</h3>
+        <div class="weekly-bars" id="weeklyBars"></div>
+      </div>
+
+      <div class="card best-habit-card">
+        <h3 class="card-title">Best habit</h3>
+        <div class="best-habit-body">
+          <p class="best-habit-name" id="bestHabitName">—</p>
+          <div class="best-habit-bar-track">
+            <div class="best-habit-bar-fill" id="bestHabitBarFill"></div>
+          </div>
+          <p class="best-habit-pct" id="bestHabitPct">0%</p>
+        </div>
+      </div>
+
+      <div class="card streak-card">
+        <h3 class="card-title">Current streak</h3>
+        <div class="streak-body">
+          <span class="streak-flame">🔥</span>
+          <span class="streak-number" id="streakNumber">0</span>
+          <span class="streak-label">days</span>
+        </div>
+        <p class="card-sub" id="streakSub">Start today</p>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 class="modal-title" id="modalTitle"></h3>
+    <p class="modal-message" id="modalMessage"></p>
+    <input type="text" class="modal-input" id="modalInput" maxlength="40">
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-cancel" id="modalCancelBtn" type="button">Cancel</button>
+      <button class="modal-btn modal-btn-confirm" id="modalConfirmBtn" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
